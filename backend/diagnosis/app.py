@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # Global cross-region inference profile. The "global." prefix routes worldwide
 # for maximum throughput, so IAM must allow "*" for the region.
-MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0-20260217-v1:0"
+MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 # Bedrock runtime client. Region is picked up from the Lambda execution
 # environment; the cross-region profile handles routing to us-east-2/us-west-2.

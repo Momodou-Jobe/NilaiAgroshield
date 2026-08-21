@@ -39,7 +39,7 @@ frontend/  (S3 static website)  --POST-->  DiagnosisFunction (streaming Flask La
    - `SAM_DEPLOY_BUCKET` — an existing S3 bucket in `ap-southeast-1` used by SAM
      for packaging artifacts.
 2. **Enable Bedrock model access** for
-   `global.anthropic.claude-haiku-4-5-20251001-v1:0-20260217-v1:0`
+   `global.anthropic.claude-haiku-4-5-20251001-v1:0`
    (Claude Haiku 4.5 — global cross-region inference profile) in `ap-southeast-1`
    via AWS Console -> Bedrock -> Model Access. First-time accounts must submit
    the use-case form.
