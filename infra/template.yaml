@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgroShield AI - Crop Disease Diagnostic Tool.
+  Streaming Flask Lambda (Bedrock Claude Haiku 4.5) + S3 static website.
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 256
+    Runtime: python3.12
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # IAM role shared by the Bedrock-invoking Lambda(s)
+  # ---------------------------------------------------------------------------
+  AppBedrockRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: agroshield-app-bedrock-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockInvokeAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  # Use * for region: the global. cross-region profile routes
+                  # to us-east-2 / us-west-2 as well as ap-southeast-1.
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0-20260217-v1:0"
+                  - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0-20260217-v1:0"
+                  - "arn:aws:bedrock:::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0-20260217-v1:0"
+
+  # ---------------------------------------------------------------------------
+  # Streaming diagnosis Lambda (Flask + Lambda Web Adapter)
+  # ---------------------------------------------------------------------------
+  DiagnosisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: agroshield-diagnosis
+      CodeUri: ../backend/diagnosis/
+      Handler: run.sh
+      Role: !GetAtt AppBedrockRole.Arn
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:27"
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_INVOKE_MODE: response_stream
+          PORT: "8080"
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+
+  # ---------------------------------------------------------------------------
+  # S3 static website bucket (public read)
+  # ---------------------------------------------------------------------------
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "agroshield-ai-frontend-${AWS::AccountId}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadForWebsite
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+
+Outputs:
+  WebsiteUrl:
+    Description: Public S3 static website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+  BucketName:
+    Description: Frontend S3 bucket name
+    Value: !Ref FrontendBucket
+  DiagnosisFunctionUrl:
+    Description: Streaming Function URL for the diagnosis Lambda
+    Value: !GetAtt DiagnosisFunctionUrl.FunctionUrl

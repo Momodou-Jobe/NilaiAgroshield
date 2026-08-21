@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroShield AI — Crop Disease Diagnostic Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-leaf" aria-hidden="true">🌿</span>
+        <div class="logo-text">
+          <h1>AgroShield&nbsp;AI</h1>
+          <p>Crop Disease &amp; Pest Diagnostic Tool</p>
+        </div>
+      </div>
+      <span class="header-badge">Your intelligent farming companion</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro-card">
+      <h2>Welcome to AgroShield AI 🌱</h2>
+      <p>
+        This app helps smallholder farmers quickly diagnose crop diseases and
+        pest problems, get tailored treatment recommendations, and learn
+        preventive farming practices. Fill in the details about your crop and
+        its symptoms below, and our AI agricultural assistant will provide a
+        thorough diagnosis and actionable advice.
+      </p>
+    </section>
+
+    <div class="layout">
+      <!-- ============================ INPUT FORM ============================ -->
+      <form id="agroForm" class="form-card" autocomplete="off">
+        <h3 class="section-title">Tell us about your crop</h3>
+
+        <!-- Widget 1: Crop Name and Variety -->
+        <div class="field">
+          <label for="crop_name">1. Crop Name and Variety</label>
+          <input
+            type="text"
+            id="crop_name"
+            name="crop_name"
+            placeholder="e.g., Maize - hybrid DK8031, Tomato - Roma variety, Rice - IR64. Enter your crop name and variety if known."
+            required
+          />
+        </div>
+
+        <!-- Widget 2: Crop Age in Weeks -->
+        <div class="field">
+          <label for="crop_age">2. Crop Age in Weeks</label>
+          <div class="slider-row">
+            <input
+              type="range"
+              id="crop_age"
+              name="crop_age"
+              min="1"
+              max="52"
+              value="50"
+            />
+            <output id="crop_age_out" class="slider-value">50</output>
+          </div>
+          <span class="hint">Slide to set how old the crop is (1–52 weeks)</span>
+        </div>
+
+        <!-- Widget 3: Plant Part Affected -->
+        <div class="field">
+          <label for="plant_part">3. Plant Part Affected</label>
+          <select id="plant_part" name="plant_part" required>
+            <option value="" disabled selected>Select the affected plant part</option>
+            <option value="leaves">Leaves</option>
+            <option value="stem">Stem</option>
+            <option value="roots">Roots</option>
+            <option value="flowers">Flowers</option>
+            <option value="fruits">Fruits</option>
+            <option value="entire plant">Entire plant</option>
+            <option value="multiple parts">Multiple parts</option>
+          </select>
+        </div>
+
+        <!-- Widget 4: Symptom Description -->
+        <div class="field">
+          <label for="symptoms">4. Symptom Description</label>
+          <textarea
+            id="symptoms"
+            name="symptoms"
+            rows="4"
+            placeholder="Describe what you see in detail — e.g., yellow spots on leaves, brown lesions on stem, wilting despite watering, holes in leaves, white powder on surface, rotting roots, unusual discoloration, etc."
+            required
+          ></textarea>
+        </div>
+
+        <!-- Widget 5: Field Affected Percentage -->
+        <div class="field">
+          <label for="field_percentage">5. Field Affected Percentage</label>
+          <div class="slider-row">
+            <input
+              type="range"
+              id="field_percentage"
+              name="field_percentage"
+              min="1"
+              max="100"
+              value="50"
+            />
+            <output id="field_percentage_out" class="slider-value">50%</output>
+          </div>
+          <span class="hint">Estimate how much of the field is affected (1–100%)</span>
+        </div>
+
+        <!-- Widget 6: Recent Weather Conditions -->
+        <div class="field">
+          <label for="weather">6. Recent Weather Conditions</label>
+          <select id="weather" name="weather" required>
+            <option value="" disabled selected>Select recent weather</option>
+            <option value="Hot and Dry">Hot and Dry</option>
+            <option value="Warm and Humid">Warm and Humid</option>
+            <option value="Rainy and Wet">Rainy and Wet</option>
+            <option value="Mild and Cloudy">Mild and Cloudy</option>
+            <option value="Cold">Cold</option>
+            <option value="Mixed or Variable">Mixed or Variable</option>
+          </select>
+        </div>
+
+        <!-- Widget 7: Pest or Insect Observations (optional) -->
+        <div class="field">
+          <label for="pests">7. Pest or Insect Observations <span class="optional">(optional)</span></label>
+          <textarea
+            id="pests"
+            name="pests"
+            rows="3"
+            placeholder="Did you notice any insects, worms, flies, or other creatures on or near your crops? Describe their appearance, color, size, and behavior if possible. Leave blank if none observed."
+          ></textarea>
+        </div>
+
+        <!-- Widget 8: Recent Treatments Applied (optional) -->
+        <div class="field">
+          <label for="treatments">8. Recent Treatments Applied <span class="optional">(optional)</span></label>
+          <textarea
+            id="treatments"
+            name="treatments"
+            rows="3"
+            placeholder="Have you recently applied any fertilizers, pesticides, herbicides, or other treatments? If yes, mention the product name, quantity, and when it was applied. Leave blank if none."
+          ></textarea>
+        </div>
+
+        <!-- Widget 9: Farm Location -->
+        <div class="field">
+          <label for="location">9. Farm Location</label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            placeholder="e.g., Kenya - Rift Valley region, India - Punjab state, Nigeria - Kaduna. Enter your country and region or province to help tailor advice to your local conditions."
+            required
+          />
+        </div>
+
+        <!-- Widget 10: Crop Photo Upload -->
+        <div class="field">
+          <label for="crop_photo">10. Crop Photo Upload</label>
+          <p class="hint">
+            Upload a clear photo of the affected crop or plant part. Make sure
+            the image shows the symptoms clearly — e.g., close-up of diseased
+            leaves, spotted fruits, damaged stems, or pest activity. Accepted
+            formats: JPG, PNG, WEBP. The AI will use this image to improve the
+            accuracy of the diagnosis.
+          </p>
+          <div id="dropzone" class="dropzone" tabindex="0">
+            <input
+              type="file"
+              id="crop_photo"
+              name="crop_photo"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+            />
+            <div class="dropzone-inner" id="dropzoneInner">
+              <span class="dropzone-icon" aria-hidden="true">📷</span>
+              <p><strong>Drag &amp; drop</strong> your crop photo here</p>
+              <p class="dropzone-sub">or click to browse (JPG, PNG, WEBP)</p>
+            </div>
+            <div class="dropzone-preview" id="dropzonePreview" hidden>
+              <img id="previewImg" alt="Selected crop photo preview" />
+              <div class="preview-meta">
+                <span id="previewName"></span>
+                <button type="button" id="removePhoto" class="remove-btn">Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="runAll" class="run-btn">
+          <span class="run-icon" aria-hidden="true">🔍</span>
+          Run Diagnosis
+        </button>
+      </form>
+
+      <!-- ============================ OUTPUT PANEL ============================ -->
+      <section class="output-card">
+        <h3 class="section-title">
+          <span aria-hidden="true">🩺</span> AgroShield Diagnosis and Recommendations
+        </h3>
+
+        <div class="panel" id="diagnosisPanel">
+          <div class="panel-status" id="panelStatus">
+            <div class="empty-state">
+              <span class="empty-icon" aria-hidden="true">🌾</span>
+              <p>Fill in the form and press <strong>Run Diagnosis</strong>. Your
+              personalised diagnosis and treatment plan will stream in here.</p>
+            </div>
+          </div>
+          <div class="panel-body" id="diagnosisOutput" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="team">
+        <h4>Meet the AgroShield Agronomy Team 🌍</h4>
+        <ul class="team-list">
+          <li><span class="team-emoji">👩🏽‍🌾</span> Amara Okafor — Lead Agronomist</li>
+          <li><span class="team-emoji">👨🏾‍🔬</span> Daniel Mwangi — Plant Pathologist</li>
+          <li><span class="team-emoji">👩🏻‍🔬</span> Priya Sharma — Soil &amp; Crop Scientist</li>
+          <li><span class="team-emoji">👨🏽‍🌾</span> Carlos Mendes — Pest Management Specialist</li>
+        </ul>
+      </div>
+      <p class="disclaimer">
+        AgroShield AI provides guidance to support your decisions. Always confirm
+        treatments with a local agricultural extension officer before applying
+        chemicals. 🌱
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

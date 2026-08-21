@@ -1,0 +1,84 @@
+name: Deploy AgroShield AI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  STACK_NAME: agroshield-ai-crop-disease-diagnostic-tool
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM build
+        run: sam build --template infra/template.yaml
+
+      - name: SAM deploy
+        run: |
+          sam deploy \
+            --stack-name "$STACK_NAME" \
+            --s3-bucket "${{ secrets.SAM_DEPLOY_BUCKET }}" \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --region "$AWS_REGION" \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Read stack outputs
+        id: outputs
+        run: |
+          get_output() {
+            aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          WEBSITE_URL="$(get_output WebsiteUrl)"
+          BUCKET_NAME="$(get_output BucketName)"
+          DIAGNOSIS_URL="$(get_output DiagnosisFunctionUrl)"
+
+          echo "website_url=$WEBSITE_URL" >> "$GITHUB_OUTPUT"
+          echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
+          echo "diagnosis_url=$DIAGNOSIS_URL" >> "$GITHUB_OUTPUT"
+
+          echo "Website URL:   $WEBSITE_URL"
+          echo "Bucket:        $BUCKET_NAME"
+          echo "Diagnosis URL: $DIAGNOSIS_URL"
+
+      - name: Inject Function URL into frontend
+        run: |
+          sed -i "s|__DIAGNOSIS_FUNCTION_URL__|${{ steps.outputs.outputs.diagnosis_url }}|g" frontend/app.js
+
+      - name: Sync frontend to S3
+        run: |
+          aws s3 sync frontend/ "s3://${{ steps.outputs.outputs.bucket_name }}" \
+            --cache-control no-cache \
+            --delete
+
+      - name: Deployment summary
+        run: |
+          echo "### AgroShield AI deployed 🌱" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Website:** ${{ steps.outputs.outputs.website_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Diagnosis Function URL:** ${{ steps.outputs.outputs.diagnosis_url }}" >> "$GITHUB_STEP_SUMMARY"
