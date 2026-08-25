@@ -65,6 +65,28 @@ VALIDATION_SYSTEM_PROMPT = (
     "daylight should pass."
 )
 
+# System prompt for the location gatekeeper. It must return ONLY strict JSON.
+LOCATION_SYSTEM_PROMPT = (
+    "You check whether a farm location is a real place on Earth where crops can "
+    "grow outdoors or in normal farming conditions. Reply with ONLY a single "
+    "JSON object, no markdown, no extra text.\n\n"
+    "The JSON must have exactly these keys:\n"
+    '  "can_grow": boolean  — false if the location is NOT on Earth (e.g. the '
+    "Moon, Mars, the Sun, outer space, another planet), is fictional/made-up, "
+    "or is a place where plants cannot realistically grow (e.g. open ocean, "
+    "the deep sea, inside a volcano, the polar ice interior, a desert with no "
+    "soil described as barren). true for any normal country, region, state, "
+    "city, or farming area on Earth.\n"
+    '  "kind": string  — one of "earth_ok", "off_earth", "fictional", '
+    '"uninhabitable", or "unclear".\n'
+    '  "reason": string  — one short, friendly sentence for the farmer, in '
+    "simple non-technical language, explaining why plants cannot grow there if "
+    'can_grow is false. Empty string if can_grow is true.\n\n'
+    "If the text is a vague but plausible Earth location, set can_grow true and "
+    'kind "earth_ok". Only block clearly impossible places. When genuinely '
+    'unsure, set can_grow true and kind "unclear" (do not block).'
+)
+
 
 def build_prompt(data):
     """Turn the incoming form fields into a readable prompt for the model."""
@@ -228,6 +250,95 @@ def validate_image(file_data, file_mime, crop_name):
     return {"ok": False, "message": message}
 
 
+def validate_location(location):
+    """Check whether the farm location is a real place on Earth where crops
+    can grow.
+
+    Returns a dict:
+      {"ok": True}                          -> location fine, proceed
+      {"ok": False, "message": "<text>"}    -> location rejected, show message
+    Fails open (allows diagnosis) on any unexpected error or blank input so a
+    validation hiccup never blocks a legitimate farmer.
+    """
+    loc = (location or "").strip()
+    if not loc:
+        # Location is required by the form; if empty, let the normal flow run.
+        return {"ok": True}
+
+    instruction = (
+        f'The farmer entered this farm location: "{loc}". '
+        "Judge it now and return ONLY the JSON object."
+    )
+
+    body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 300,
+        "temperature": 0,
+        "system": LOCATION_SYSTEM_PROMPT,
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": instruction}]}
+        ],
+    }
+
+    try:
+        resp = bedrock.invoke_model(
+            modelId=MODEL_ID,
+            body=json.dumps(body),
+            contentType="application/json",
+            accept="application/json",
+        )
+        payload = json.loads(resp["body"].read().decode("utf-8"))
+        text = ""
+        for block in payload.get("content", []):
+            if block.get("type") == "text":
+                text += block.get("text", "")
+        verdict = _parse_json_object(text)
+    except Exception:  # noqa: BLE001 - fail open on any validation error
+        return {"ok": True}
+
+    if verdict is None:
+        return {"ok": True}
+
+    can_grow = bool(verdict.get("can_grow", True))
+    if can_grow:
+        return {"ok": True}
+
+    kind = str(verdict.get("kind", "") or "").strip().lower()
+    reason = str(verdict.get("reason", "") or "").strip()
+
+    if kind == "off_earth":
+        headline = f'Plants cannot grow at "{loc}".'
+        detail = (
+            "That location is not on Earth. Crops need soil, air, water, and "
+            "sunlight found only here on Earth. Please enter a real place on "
+            "Earth — your country and region or province."
+        )
+    elif kind == "fictional":
+        headline = f'"{loc}" does not appear to be a real place.'
+        detail = (
+            "We could not recognise that as a real location on Earth. Please "
+            "enter your actual country and region or province so we can tailor "
+            "the advice to your local conditions."
+        )
+    elif kind == "uninhabitable":
+        headline = f'Crops cannot realistically grow at "{loc}".'
+        detail = (
+            "That environment cannot support normal crop growing. Please enter "
+            "the country and region or province where your farm is located."
+        )
+    else:
+        headline = f'Plants cannot grow at "{loc}".'
+        detail = (
+            "Please enter a real place on Earth where your farm is located — "
+            "your country and region or province."
+        )
+
+    message = f"## Location Not Accepted\n\n**{headline}**\n\n{detail}"
+    if reason:
+        message += f"\n\n*{reason}*"
+    return {"ok": False, "message": message}
+
+
 def _parse_json_object(text):
     """Extract the first JSON object from a model reply, tolerant of stray
     markdown fences or surrounding prose."""
@@ -260,6 +371,22 @@ def diagnose():
     file_data = data.get("file_data")
     file_mime = data.get("file_mime")
     crop_name = data.get("crop_name", "")
+    location = data.get("location", "")
+
+    # --- Location gate ----------------------------------------------------
+    # Reject places off Earth or where crops cannot grow.
+    loc_verdict = validate_location(location)
+    if not loc_verdict.get("ok"):
+        loc_message = loc_verdict["message"]
+
+        def loc_rejected():
+            yield loc_message
+
+        return Response(
+            stream_with_context(loc_rejected()),
+            content_type="text/plain; charset=utf-8",
+            headers=CORS_HEADERS,
+        )
 
     # --- Image gate -------------------------------------------------------
     # The photo is optional. If none is provided, proceed straight to a
