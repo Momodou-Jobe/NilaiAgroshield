@@ -67,24 +67,34 @@ VALIDATION_SYSTEM_PROMPT = (
 
 # System prompt for the location gatekeeper. It must return ONLY strict JSON.
 LOCATION_SYSTEM_PROMPT = (
-    "You check whether a farm location is a real place on Earth where crops can "
-    "grow outdoors or in normal farming conditions. Reply with ONLY a single "
-    "JSON object, no markdown, no extra text.\n\n"
+    "You check a farmer's stated farm location for a crop-diagnosis app. You "
+    "judge two things: (1) whether crops can grow there, and (2) whether the "
+    "text is a specific, named real place. Reply with ONLY a single JSON "
+    "object, no markdown, no extra text.\n\n"
     "The JSON must have exactly these keys:\n"
     '  "can_grow": boolean  — false if the location is NOT on Earth (e.g. the '
     "Moon, Mars, the Sun, outer space, another planet), is fictional/made-up, "
     "or is a place where plants cannot realistically grow (e.g. open ocean, "
-    "the deep sea, inside a volcano, the polar ice interior, a desert with no "
-    "soil described as barren). true for any normal country, region, state, "
-    "city, or farming area on Earth.\n"
+    "the deep sea, inside a volcano, the polar ice interior). true for any "
+    "normal country, region, state, city, or farming area on Earth.\n"
+    '  "is_specific": boolean  — true only if the text names an actual, '
+    "identifiable place such as a country, state, province, region, district, "
+    "city, or town (e.g. \"Kenya - Rift Valley\", \"Punjab, India\", "
+    '"Kaduna, Nigeria"). false for vague, relative, or generic phrases that do '
+    "not name a real place, such as \"here\", \"there\", \"my village\", "
+    '"my farm", "home", "my place", "the field", "nearby", "over there", '
+    '"our land", or a blank/gibberish entry.\n'
     '  "kind": string  — one of "earth_ok", "off_earth", "fictional", '
-    '"uninhabitable", or "unclear".\n'
+    '"uninhabitable", "too_vague", or "unclear".\n'
     '  "reason": string  — one short, friendly sentence for the farmer, in '
-    "simple non-technical language, explaining why plants cannot grow there if "
-    'can_grow is false. Empty string if can_grow is true.\n\n'
-    "If the text is a vague but plausible Earth location, set can_grow true and "
-    'kind "earth_ok". Only block clearly impossible places. When genuinely '
-    'unsure, set can_grow true and kind "unclear" (do not block).'
+    "simple non-technical language, explaining the problem if can_grow is "
+    "false OR is_specific is false. Empty string when both are true.\n\n"
+    "Rules: A real named place where crops grow should have can_grow true, "
+    'is_specific true, kind "earth_ok". A real named place that cannot grow '
+    "crops uses the matching kind. A place that is on Earth and could grow "
+    'crops but is only described vaguely (like "my village") should have '
+    'can_grow true, is_specific false, kind "too_vague". When you truly '
+    'cannot tell, set both true and kind "unclear" (do not block).'
 )
 
 
@@ -300,11 +310,28 @@ def validate_location(location):
         return {"ok": True}
 
     can_grow = bool(verdict.get("can_grow", True))
-    if can_grow:
-        return {"ok": True}
-
+    is_specific = bool(verdict.get("is_specific", True))
     kind = str(verdict.get("kind", "") or "").strip().lower()
     reason = str(verdict.get("reason", "") or "").strip()
+
+    # Both checks passed -> proceed.
+    if can_grow and is_specific:
+        return {"ok": True}
+
+    # A growable place that is only described vaguely ("here", "my village").
+    if can_grow and not is_specific:
+        headline = f'"{loc}" is not specific enough.'
+        detail = (
+            "Please enter an actual place instead of a general phrase like "
+            '"here", "there", or "my village". Type your country and region '
+            'or province — for example "Kenya - Rift Valley", '
+            '"India - Punjab", or "Nigeria - Kaduna" — so we can tailor the '
+            "advice to your local conditions."
+        )
+        message = f"## Location Not Accepted\n\n**{headline}**\n\n{detail}"
+        if reason:
+            message += f"\n\n*{reason}*"
+        return {"ok": False, "message": message}
 
     if kind == "off_earth":
         headline = f'Plants cannot grow at "{loc}".'
