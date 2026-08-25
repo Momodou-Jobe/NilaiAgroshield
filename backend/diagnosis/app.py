@@ -40,6 +40,31 @@ SYSTEM_PROMPT = (
     "with a local agricultural extension officer before applying chemicals."
 )
 
+# System prompt for the image gatekeeper. It must return ONLY strict JSON.
+VALIDATION_SYSTEM_PROMPT = (
+    "You are an image validation gate for a crop-diagnosis app. You are shown "
+    "one photo and told which crop the farmer says it is. Judge the photo and "
+    "reply with ONLY a single JSON object, no markdown, no extra text.\n\n"
+    "The JSON must have exactly these keys:\n"
+    '  "is_plant_part": boolean  — true only if the photo clearly shows a plant '
+    "or a plant part (leaf, stem, root, flower, fruit, seed, whole plant, etc.). "
+    "false for people, animals, objects, screenshots, scenery with no clear "
+    "plant subject, etc.\n"
+    '  "is_clear": boolean  — true only if the photo is sharp and well-lit '
+    "enough to inspect for disease or pests. false if blurry, too dark, too "
+    "bright/overexposed, too far away, or heavily obstructed.\n"
+    '  "matches_crop": boolean  — true only if the plant in the photo is '
+    "consistent with the crop the farmer named. If you cannot confidently tell "
+    "the species, set this to true (do not block on uncertainty alone).\n"
+    '  "detected_plant": string  — your best guess of the plant/crop in the '
+    'photo, or "unknown".\n'
+    '  "reason": string  — one short, friendly sentence for the farmer '
+    "explaining the main problem if any check failed, written in simple "
+    "non-technical language.\n\n"
+    "Be practical, not overly strict: a normal phone photo of a real leaf in "
+    "daylight should pass."
+)
+
 
 def build_prompt(data):
     """Turn the incoming form fields into a readable prompt for the model."""
@@ -82,6 +107,19 @@ def build_prompt(data):
     return "\n".join(lines)
 
 
+def image_block(file_data, file_mime):
+    """Build a Bedrock image/document content block from base64 data."""
+    block_type = "image" if file_mime.startswith("image/") else "document"
+    return {
+        "type": block_type,
+        "source": {
+            "type": "base64",
+            "media_type": file_mime,
+            "data": file_data,
+        },
+    }
+
+
 def build_messages(data):
     """Build the Bedrock messages list, prepending an image/document block
     when the request carries file_data + file_mime."""
@@ -92,33 +130,123 @@ def build_messages(data):
     file_mime = data.get("file_mime")
 
     if file_data and file_mime:
-        if file_mime.startswith("image/"):
-            content.append(
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": file_mime,
-                        "data": file_data,
-                    },
-                }
-            )
-        else:
-            # Non-image uploads become a document block.
-            content.append(
-                {
-                    "type": "document",
-                    "source": {
-                        "type": "base64",
-                        "media_type": file_mime,
-                        "data": file_data,
-                    },
-                }
-            )
+        content.append(image_block(file_data, file_mime))
 
     content.append({"type": "text", "text": prompt_text})
 
     return [{"role": "user", "content": content}]
+
+
+def validate_image(file_data, file_mime, crop_name):
+    """Run a quick, non-streaming gate over the uploaded photo.
+
+    Returns a dict:
+      {"ok": True}                          -> photo passed, proceed to diagnose
+      {"ok": False, "message": "<text>"}    -> photo rejected, show message
+    On any unexpected error we fail open (allow diagnosis) so a validation
+    hiccup never blocks a legitimate farmer.
+    """
+    crop = crop_name.strip() or "the crop the farmer named"
+    instruction = (
+        f'The farmer says this photo is of: "{crop}". '
+        "Validate the photo now and return ONLY the JSON object."
+    )
+
+    body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 400,
+        "temperature": 0,
+        "system": VALIDATION_SYSTEM_PROMPT,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    image_block(file_data, file_mime),
+                    {"type": "text", "text": instruction},
+                ],
+            }
+        ],
+    }
+
+    try:
+        resp = bedrock.invoke_model(
+            modelId=MODEL_ID,
+            body=json.dumps(body),
+            contentType="application/json",
+            accept="application/json",
+        )
+        payload = json.loads(resp["body"].read().decode("utf-8"))
+        # Anthropic response: {"content": [{"type":"text","text":"..."}], ...}
+        text = ""
+        for block in payload.get("content", []):
+            if block.get("type") == "text":
+                text += block.get("text", "")
+        verdict = _parse_json_object(text)
+    except Exception:  # noqa: BLE001 - fail open on any validation error
+        return {"ok": True}
+
+    if verdict is None:
+        # Could not read a verdict; don't block the farmer.
+        return {"ok": True}
+
+    is_plant = bool(verdict.get("is_plant_part", True))
+    is_clear = bool(verdict.get("is_clear", True))
+    matches = bool(verdict.get("matches_crop", True))
+    detected = str(verdict.get("detected_plant", "") or "").strip()
+    reason = str(verdict.get("reason", "") or "").strip()
+
+    if is_plant and is_clear and matches:
+        return {"ok": True}
+
+    # Build a friendly, specific rejection message.
+    if not is_plant:
+        headline = "That photo does not look like a plant."
+        detail = (
+            "Please upload a clear photo of the affected plant part — for "
+            "example a leaf, stem, root, flower, or fruit."
+        )
+    elif not is_clear:
+        headline = "That photo is not clear enough to analyse."
+        detail = (
+            "Please take another photo that is sharp and well-lit. Get closer "
+            "to the affected area, hold the camera steady, and avoid shadows, "
+            "glare, or blur."
+        )
+    else:  # not matches
+        seen = f' It looks more like {detected}.' if detected and detected.lower() != "unknown" else ""
+        headline = (
+            f'That photo does not match "{crop}".{seen}'
+        )
+        detail = (
+            f'Please upload a photo of your {crop} plant part (leaf, stem, '
+            "root, flower, or fruit) so the diagnosis stays accurate."
+        )
+
+    message = f"## Photo Not Accepted\n\n**{headline}**\n\n{detail}"
+    if reason:
+        message += f"\n\n*{reason}*"
+    return {"ok": False, "message": message}
+
+
+def _parse_json_object(text):
+    """Extract the first JSON object from a model reply, tolerant of stray
+    markdown fences or surrounding prose."""
+    if not text:
+        return None
+    text = text.strip()
+    # Strip ```json ... ``` fences if present.
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        return None
+    try:
+        return json.loads(text[start : end + 1])
+    except (ValueError, TypeError):
+        return None
 
 
 @app.route("/", methods=["OPTIONS"])
@@ -129,6 +257,43 @@ def options():
 @app.route("/", methods=["POST"])
 def diagnose():
     data = request.get_json(silent=True) or {}
+    file_data = data.get("file_data")
+    file_mime = data.get("file_mime")
+    crop_name = data.get("crop_name", "")
+
+    # --- Image gate -------------------------------------------------------
+    # A photo is required. If one is present, validate it before diagnosing.
+    if not (file_data and file_mime):
+        def need_photo():
+            yield (
+                "## Photo Required\n\n"
+                "**Please upload a photo of the affected plant.**\n\n"
+                "Upload a clear picture of the plant part showing the problem "
+                "(leaf, stem, root, flower, or fruit) so we can give you an "
+                "accurate diagnosis."
+            )
+
+        return Response(
+            stream_with_context(need_photo()),
+            content_type="text/plain; charset=utf-8",
+            headers=CORS_HEADERS,
+        )
+
+    if file_mime.startswith("image/"):
+        verdict = validate_image(file_data, file_mime, crop_name)
+        if not verdict.get("ok"):
+            reject_message = verdict["message"]
+
+            def rejected():
+                yield reject_message
+
+            return Response(
+                stream_with_context(rejected()),
+                content_type="text/plain; charset=utf-8",
+                headers=CORS_HEADERS,
+            )
+
+    # --- Passed the gate: stream the full diagnosis -----------------------
     messages = build_messages(data)
 
     body = {

@@ -230,6 +230,17 @@ function validate() {
       return false;
     }
   }
+  // A crop photo is required so the AI can verify and inspect the plant.
+  if (!fileData || !fileMime) {
+    alert(
+      "Please upload a photo of the affected plant part. The photo must be " +
+        "the crop you named above (e.g., if the crop is Maize, upload a photo " +
+        "of a maize plant part)."
+    );
+    dropzone.scrollIntoView({ behavior: "smooth", block: "center" });
+    dropzone.focus();
+    return false;
+  }
   return true;
 }
 
