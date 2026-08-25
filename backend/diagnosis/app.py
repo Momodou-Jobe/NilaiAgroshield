@@ -262,24 +262,9 @@ def diagnose():
     crop_name = data.get("crop_name", "")
 
     # --- Image gate -------------------------------------------------------
-    # A photo is required. If one is present, validate it before diagnosing.
-    if not (file_data and file_mime):
-        def need_photo():
-            yield (
-                "## Photo Required\n\n"
-                "**Please upload a photo of the affected plant.**\n\n"
-                "Upload a clear picture of the plant part showing the problem "
-                "(leaf, stem, root, flower, or fruit) so we can give you an "
-                "accurate diagnosis."
-            )
-
-        return Response(
-            stream_with_context(need_photo()),
-            content_type="text/plain; charset=utf-8",
-            headers=CORS_HEADERS,
-        )
-
-    if file_mime.startswith("image/"):
+    # The photo is optional. If none is provided, proceed straight to a
+    # text-only diagnosis. If an image is present, validate it first.
+    if file_data and file_mime and file_mime.startswith("image/"):
         verdict = validate_image(file_data, file_mime, crop_name)
         if not verdict.get("ok"):
             reject_message = verdict["message"]
