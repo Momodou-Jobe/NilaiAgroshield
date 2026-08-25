@@ -10,6 +10,187 @@
 const DIAGNOSIS_URL = "__DIAGNOSIS_FUNCTION_URL__";
 
 // --------------------------------------------------------------------------
+// Internationalisation (English <-> Bahasa Melayu)
+// --------------------------------------------------------------------------
+const I18N = {
+  en: {
+    _langName: "English",
+    _otherLangName: "Bahasa Melayu",
+    tagline: "Crop Disease & Pest Diagnostic Tool",
+    badge: "Your intelligent farming companion",
+    welcome_title: "Welcome to AgroShield AI 🌱",
+    welcome_body:
+      "This app helps smallholder farmers quickly diagnose crop diseases and pest problems, get tailored treatment recommendations, and learn preventive farming practices. Fill in the details about your crop and its symptoms below, and our AI agricultural assistant will provide a thorough diagnosis and actionable advice.",
+    form_title: "Tell us about your crop",
+    w1_label: "1. Crop Name and Variety",
+    w1_ph:
+      "e.g., Maize - hybrid DK8031, Tomato - Roma variety, Rice - IR64. Enter your crop name and variety if known.",
+    w2_label: "2. Crop Age in Weeks",
+    w2_hint: "Slide to set how old the crop is (1–52 weeks)",
+    w3_label: "3. Plant Part Affected",
+    w3_placeholder: "Select the affected plant part",
+    w3_leaves: "Leaves",
+    w3_stem: "Stem",
+    w3_roots: "Roots",
+    w3_flowers: "Flowers",
+    w3_fruits: "Fruits",
+    w3_entire: "Entire plant",
+    w3_multiple: "Multiple parts",
+    w4_label: "4. Symptom Description",
+    w4_ph:
+      "Describe what you see in detail — e.g., yellow spots on leaves, brown lesions on stem, wilting despite watering, holes in leaves, white powder on surface, rotting roots, unusual discoloration, etc.",
+    w5_label: "5. Field Affected Percentage",
+    w5_hint: "Estimate how much of the field is affected (1–100%)",
+    w6_label: "6. Recent Weather Conditions",
+    w6_placeholder: "Select recent weather",
+    w6_hot: "Hot and Dry",
+    w6_humid: "Warm and Humid",
+    w6_rainy: "Rainy and Wet",
+    w6_mild: "Mild and Cloudy",
+    w6_cold: "Cold",
+    w6_mixed: "Mixed or Variable",
+    w7_label: "7. Pest or Insect Observations",
+    w7_ph:
+      "Did you notice any insects, worms, flies, or other creatures on or near your crops? Describe their appearance, color, size, and behavior if possible. Leave blank if none observed.",
+    w8_label: "8. Recent Treatments Applied",
+    w8_ph:
+      "Have you recently applied any fertilizers, pesticides, herbicides, or other treatments? If yes, mention the product name, quantity, and when it was applied. Leave blank if none.",
+    w9_label: "9. Farm Location",
+    w9_ph:
+      "e.g., Kenya - Rift Valley region, India - Punjab state, Nigeria - Kaduna. Enter your country and region or province to help tailor advice to your local conditions.",
+    w9_hint:
+      'Enter an actual named place (country and region or province). General phrases like "here", "there", or "my village" cannot be used.',
+    w10_label: "10. Crop Photo Upload",
+    w10_hint:
+      "Optional, but recommended for a more accurate diagnosis. If you upload a photo, it must be the same crop you named above — for example, if your crop is Maize, upload a photo of a maize leaf, stem, root, or fruit, not a different plant. Make sure the image is sharp and well-lit and shows the symptoms clearly. If the photo is not a plant, is too blurry, or does not match your crop, the app will ask you to upload a better one. Accepted formats: JPG, PNG, WEBP.",
+    optional: "(optional)",
+    dz_main: "Drag & drop your crop photo here",
+    dz_sub: "or click to browse (JPG, PNG, WEBP)",
+    remove: "Remove",
+    run_btn: "Run Diagnosis",
+    output_title: "AgroShield Diagnosis and Recommendations",
+    empty_state:
+      "Fill in the form and press Run Diagnosis. Your personalised diagnosis and treatment plan will stream in here.",
+    team_title: "Meet the AgroShield Agronomy Team 🌍",
+    team_1: "Amara Okafor — Lead Agronomist",
+    team_2: "Daniel Mwangi — Plant Pathologist",
+    team_3: "Priya Sharma — Soil & Crop Scientist",
+    team_4: "Carlos Mendes — Pest Management Specialist",
+    disclaimer:
+      "AgroShield AI provides guidance to support your decisions. Always confirm treatments with a local agricultural extension officer before applying chemicals. 🌱",
+    // runtime strings
+    spinner: "Analysing your crop… growing your diagnosis 🌱",
+    err_generic: "Sorry, something went wrong.",
+    err_no_url:
+      "The diagnosis service URL has not been configured yet. Deploy via GitHub Actions so the Function URL is injected.",
+    no_diagnosis: "_No diagnosis was returned. Please try again._",
+    fill_field: "Please fill in: ",
+  },
+  ms: {
+    _langName: "Bahasa Melayu",
+    _otherLangName: "English",
+    tagline: "Alat Diagnostik Penyakit & Perosak Tanaman",
+    badge: "Rakan pertanian pintar anda",
+    welcome_title: "Selamat datang ke AgroShield AI 🌱",
+    welcome_body:
+      "Aplikasi ini membantu petani kecil mendiagnosis penyakit tanaman dan masalah perosak dengan cepat, mendapatkan cadangan rawatan yang sesuai, dan mempelajari amalan pertanian pencegahan. Isikan maklumat tentang tanaman anda dan gejalanya di bawah, dan pembantu pertanian AI kami akan memberikan diagnosis menyeluruh serta nasihat yang boleh dilaksanakan.",
+    form_title: "Beritahu kami tentang tanaman anda",
+    w1_label: "1. Nama dan Jenis Tanaman",
+    w1_ph:
+      "cth., Jagung - hibrid DK8031, Tomato - jenis Roma, Padi - IR64. Masukkan nama dan jenis tanaman anda jika diketahui.",
+    w2_label: "2. Usia Tanaman (Minggu)",
+    w2_hint: "Luncurkan untuk menetapkan usia tanaman (1–52 minggu)",
+    w3_label: "3. Bahagian Tumbuhan Terjejas",
+    w3_placeholder: "Pilih bahagian tumbuhan yang terjejas",
+    w3_leaves: "Daun",
+    w3_stem: "Batang",
+    w3_roots: "Akar",
+    w3_flowers: "Bunga",
+    w3_fruits: "Buah",
+    w3_entire: "Seluruh tumbuhan",
+    w3_multiple: "Beberapa bahagian",
+    w4_label: "4. Penerangan Gejala",
+    w4_ph:
+      "Terangkan apa yang anda lihat secara terperinci — cth., bintik kuning pada daun, lesi perang pada batang, layu walaupun disiram, lubang pada daun, serbuk putih pada permukaan, akar reput, perubahan warna luar biasa, dsb.",
+    w5_label: "5. Peratusan Ladang Terjejas",
+    w5_hint: "Anggarkan berapa banyak ladang yang terjejas (1–100%)",
+    w6_label: "6. Keadaan Cuaca Terkini",
+    w6_placeholder: "Pilih cuaca terkini",
+    w6_hot: "Panas dan Kering",
+    w6_humid: "Hangat dan Lembap",
+    w6_rainy: "Hujan dan Basah",
+    w6_mild: "Sederhana dan Mendung",
+    w6_cold: "Sejuk",
+    w6_mixed: "Bercampur atau Berubah-ubah",
+    w7_label: "7. Pemerhatian Perosak atau Serangga",
+    w7_ph:
+      "Adakah anda perasan sebarang serangga, ulat, lalat, atau makhluk lain pada atau berhampiran tanaman anda? Terangkan rupa, warna, saiz, dan tingkah lakunya jika boleh. Biarkan kosong jika tiada.",
+    w8_label: "8. Rawatan Terkini Digunakan",
+    w8_ph:
+      "Adakah anda baru-baru ini menggunakan sebarang baja, racun perosak, racun rumpai, atau rawatan lain? Jika ya, nyatakan nama produk, kuantiti, dan bila ia digunakan. Biarkan kosong jika tiada.",
+    w9_label: "9. Lokasi Ladang",
+    w9_ph:
+      "cth., Selangor - Sabak Bernam, Kedah - Kota Setar, Sarawak - Miri. Masukkan negara dan wilayah atau negeri anda untuk membantu menyesuaikan nasihat dengan keadaan tempatan anda.",
+    w9_hint:
+      'Masukkan nama tempat sebenar (negara dan wilayah atau negeri). Frasa umum seperti "di sini", "di sana", atau "kampung saya" tidak boleh digunakan.',
+    w10_label: "10. Muat Naik Foto Tanaman",
+    w10_hint:
+      "Pilihan, tetapi disyorkan untuk diagnosis yang lebih tepat. Jika anda memuat naik foto, ia mesti tanaman yang sama seperti yang anda namakan di atas — contohnya, jika tanaman anda ialah Jagung, muat naik foto daun, batang, akar, atau buah jagung, bukan tumbuhan lain. Pastikan imej jelas dan mempunyai pencahayaan yang baik serta menunjukkan gejala dengan jelas. Jika foto bukan tumbuhan, terlalu kabur, atau tidak sepadan dengan tanaman anda, aplikasi akan meminta anda memuat naik yang lebih baik. Format diterima: JPG, PNG, WEBP.",
+    optional: "(pilihan)",
+    dz_main: "Seret & lepas foto tanaman anda di sini",
+    dz_sub: "atau klik untuk melayari (JPG, PNG, WEBP)",
+    remove: "Buang",
+    run_btn: "Jalankan Diagnosis",
+    output_title: "Diagnosis dan Cadangan AgroShield",
+    empty_state:
+      "Isikan borang dan tekan Jalankan Diagnosis. Diagnosis peribadi dan pelan rawatan anda akan dipaparkan di sini.",
+    team_title: "Kenali Pasukan Agronomi AgroShield 🌍",
+    team_1: "Amara Okafor — Ketua Agronomis",
+    team_2: "Daniel Mwangi — Pakar Patologi Tumbuhan",
+    team_3: "Priya Sharma — Saintis Tanah & Tanaman",
+    team_4: "Carlos Mendes — Pakar Pengurusan Perosak",
+    disclaimer:
+      "AgroShield AI memberikan panduan untuk menyokong keputusan anda. Sentiasa sahkan rawatan dengan pegawai pengembangan pertanian tempatan sebelum menggunakan bahan kimia. 🌱",
+    spinner: "Menganalisis tanaman anda… menyediakan diagnosis 🌱",
+    err_generic: "Maaf, sesuatu telah berlaku.",
+    err_no_url:
+      "URL perkhidmatan diagnosis belum dikonfigurasikan. Sebarkan melalui GitHub Actions supaya Function URL dimasukkan.",
+    no_diagnosis: "_Tiada diagnosis dikembalikan. Sila cuba lagi._",
+    fill_field: "Sila isikan: ",
+  },
+};
+
+// Current language: restore from localStorage, default English.
+let currentLang = localStorage.getItem("agroshield_lang") || "en";
+
+function t(key) {
+  const pack = I18N[currentLang] || I18N.en;
+  return pack[key] != null ? pack[key] : I18N.en[key] || "";
+}
+
+function applyLanguage(lang) {
+  currentLang = I18N[lang] ? lang : "en";
+  localStorage.setItem("agroshield_lang", currentLang);
+  document.documentElement.lang = currentLang === "ms" ? "ms" : "en";
+
+  // Text content
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    const val = t(key);
+    if (val) el.textContent = val;
+  });
+  // Placeholders
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-ph");
+    const val = t(key);
+    if (val) el.setAttribute("placeholder", val);
+  });
+  // Toggle button shows the language you can switch TO.
+  const label = document.getElementById("langToggleLabel");
+  if (label) label.textContent = t("_otherLangName");
+}
+
+// --------------------------------------------------------------------------
 // State for the uploaded photo (raw base64 + MIME type)
 // --------------------------------------------------------------------------
 let fileData = null; // raw base64 string, no "data:...;base64," prefix
@@ -173,14 +354,18 @@ function showSpinner() {
   output.innerHTML = "";
   panelStatus.innerHTML =
     '<div class="spinner-wrap"><div class="spinner"></div>' +
-    "<span>Analysing your crop… growing your diagnosis 🌱</span></div>";
+    "<span>" +
+    escapeHtml(t("spinner")) +
+    "</span></div>";
 }
 
 function showError(message) {
   output.classList.remove("active");
   panelStatus.innerHTML =
     '<div class="error-box"><span class="error-icon">⚠️</span>' +
-    "<span>Sorry, something went wrong.</span>" +
+    "<span>" +
+    escapeHtml(t("err_generic")) +
+    "</span>" +
     '<span style="font-weight:600;font-size:13px;">' +
     escapeHtml(message) +
     "</span></div>";
@@ -207,6 +392,8 @@ function collectBody() {
     treatments: document.getElementById("treatments").value,
     location: document.getElementById("location").value,
   };
+  // Tell the backend which language to answer in.
+  body.language = currentLang === "ms" ? "Bahasa Melayu" : "English";
   // Only include file_data if a photo was selected.
   if (fileData && fileMime) {
     body.file_data = fileData;
@@ -217,15 +404,15 @@ function collectBody() {
 
 function validate() {
   const required = [
-    ["crop_name", "Crop Name and Variety"],
-    ["plant_part", "Plant Part Affected"],
-    ["symptoms", "Symptom Description"],
-    ["weather", "Recent Weather Conditions"],
-    ["location", "Farm Location"],
+    ["crop_name", "w1_label"],
+    ["plant_part", "w3_label"],
+    ["symptoms", "w4_label"],
+    ["weather", "w6_label"],
+    ["location", "w9_label"],
   ];
-  for (const [id, label] of required) {
+  for (const [id, key] of required) {
     if (!document.getElementById(id).value.trim()) {
-      alert("Please fill in: " + label);
+      alert(t("fill_field") + t(key));
       document.getElementById(id).focus();
       return false;
     }
@@ -243,10 +430,7 @@ async function runDiagnosis() {
   if (!validate()) return;
 
   if (!DIAGNOSIS_URL || DIAGNOSIS_URL.indexOf("__") === 0) {
-    showError(
-      "The diagnosis service URL has not been configured yet. Deploy via " +
-        "GitHub Actions so the Function URL is injected."
-    );
+    showError(t("err_no_url"));
     return;
   }
 
@@ -313,7 +497,7 @@ async function runDiagnosis() {
       output.appendChild(makeLineSpan(buffer));
     }
     if (!output.childNodes.length) {
-      output.appendChild(makeLineSpan("_No diagnosis was returned. Please try again._"));
+      output.appendChild(makeLineSpan(t("no_diagnosis")));
     }
     output.scrollTop = output.scrollHeight;
   } catch (err) {
@@ -325,3 +509,14 @@ async function runDiagnosis() {
 
 // "Run All" button fires the AI call.
 runBtn.addEventListener("click", runDiagnosis);
+
+// --------------------------------------------------------------------------
+// Language toggle (English <-> Bahasa Melayu)
+// --------------------------------------------------------------------------
+const langToggle = document.getElementById("langToggle");
+langToggle.addEventListener("click", () => {
+  applyLanguage(currentLang === "en" ? "ms" : "en");
+});
+
+// Apply the saved/default language on first load.
+applyLanguage(currentLang);

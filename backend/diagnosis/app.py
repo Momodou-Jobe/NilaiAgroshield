@@ -169,7 +169,109 @@ def build_messages(data):
     return [{"role": "user", "content": content}]
 
 
-def validate_image(file_data, file_mime, crop_name):
+# Bilingual templates for the gate rejection messages. {crop}/{seen}/{loc}
+# are filled in at runtime. "ms" = Bahasa Melayu.
+GATE_TEXT = {
+    "en": {
+        "photo_title": "Photo Not Accepted",
+        "not_plant_h": "That photo does not look like a plant.",
+        "not_plant_d": (
+            "Please upload a clear photo of the affected plant part — for "
+            "example a leaf, stem, root, flower, or fruit."
+        ),
+        "blurry_h": "That photo is not clear enough to analyse.",
+        "blurry_d": (
+            "Please take another photo that is sharp and well-lit. Get closer "
+            "to the affected area, hold the camera steady, and avoid shadows, "
+            "glare, or blur."
+        ),
+        "mismatch_h": 'That photo does not match "{crop}".{seen}',
+        "mismatch_seen": " It looks more like {detected}.",
+        "mismatch_d": (
+            'Please upload a photo of your {crop} plant part (leaf, stem, '
+            "root, flower, or fruit) so the diagnosis stays accurate."
+        ),
+        "loc_title": "Location Not Accepted",
+        "vague_h": '"{loc}" is not specific enough.',
+        "vague_d": (
+            "Please enter an actual place instead of a general phrase like "
+            '"here", "there", or "my village". Type your country and region '
+            'or province — for example "Kenya - Rift Valley", '
+            '"India - Punjab", or "Nigeria - Kaduna".'
+        ),
+        "offearth_h": 'Plants cannot grow at "{loc}".',
+        "offearth_d": (
+            "That location is not on Earth. Crops need soil, air, water, and "
+            "sunlight found only here on Earth. Please enter a real place on "
+            "Earth — your country and region or province."
+        ),
+        "fictional_h": '"{loc}" does not appear to be a real place.',
+        "fictional_d": (
+            "We could not recognise that as a real location on Earth. Please "
+            "enter your actual country and region or province."
+        ),
+        "uninhabitable_h": 'Crops cannot realistically grow at "{loc}".',
+        "uninhabitable_d": (
+            "That environment cannot support normal crop growing. Please enter "
+            "the country and region or province where your farm is located."
+        ),
+    },
+    "ms": {
+        "photo_title": "Foto Tidak Diterima",
+        "not_plant_h": "Foto itu tidak kelihatan seperti tumbuhan.",
+        "not_plant_d": (
+            "Sila muat naik foto yang jelas bagi bahagian tumbuhan yang "
+            "terjejas — contohnya daun, batang, akar, bunga, atau buah."
+        ),
+        "blurry_h": "Foto itu tidak cukup jelas untuk dianalisis.",
+        "blurry_d": (
+            "Sila ambil foto lain yang tajam dan mempunyai pencahayaan yang "
+            "baik. Dekatkan kamera ke bahagian terjejas, pegang kamera dengan "
+            "stabil, dan elakkan bayang, silau, atau kekaburan."
+        ),
+        "mismatch_h": 'Foto itu tidak sepadan dengan "{crop}".{seen}',
+        "mismatch_seen": " Ia lebih kelihatan seperti {detected}.",
+        "mismatch_d": (
+            "Sila muat naik foto bahagian tumbuhan {crop} anda (daun, batang, "
+            "akar, bunga, atau buah) supaya diagnosis kekal tepat."
+        ),
+        "loc_title": "Lokasi Tidak Diterima",
+        "vague_h": '"{loc}" tidak cukup khusus.',
+        "vague_d": (
+            "Sila masukkan tempat sebenar dan bukan frasa umum seperti "
+            '"di sini", "di sana", atau "kampung saya". Taipkan negara dan '
+            'wilayah atau negeri anda — contohnya "Selangor - Sabak Bernam", '
+            '"Kedah - Kota Setar", atau "Sarawak - Miri".'
+        ),
+        "offearth_h": 'Tumbuhan tidak boleh tumbuh di "{loc}".',
+        "offearth_d": (
+            "Lokasi itu bukan di Bumi. Tanaman memerlukan tanah, udara, air, "
+            "dan cahaya matahari yang hanya terdapat di Bumi. Sila masukkan "
+            "tempat sebenar di Bumi — negara dan wilayah atau negeri anda."
+        ),
+        "fictional_h": '"{loc}" tidak kelihatan seperti tempat sebenar.',
+        "fictional_d": (
+            "Kami tidak dapat mengenali itu sebagai lokasi sebenar di Bumi. "
+            "Sila masukkan negara dan wilayah atau negeri anda yang sebenar."
+        ),
+        "uninhabitable_h": 'Tanaman tidak boleh tumbuh secara realistik di "{loc}".',
+        "uninhabitable_d": (
+            "Persekitaran itu tidak dapat menyokong penanaman tanaman biasa. "
+            "Sila masukkan negara dan wilayah atau negeri di mana ladang anda "
+            "terletak."
+        ),
+    },
+}
+
+
+def gate_lang(language):
+    """Map the incoming language label to a GATE_TEXT key."""
+    if (language or "").strip().lower().startswith("bahasa"):
+        return "ms"
+    return "en"
+
+
+def validate_image(file_data, file_mime, crop_name, language="English"):
     """Run a quick, non-streaming gate over the uploaded photo.
 
     Returns a dict:
@@ -178,9 +280,12 @@ def validate_image(file_data, file_mime, crop_name):
     On any unexpected error we fail open (allow diagnosis) so a validation
     hiccup never blocks a legitimate farmer.
     """
+    lang = gate_lang(language)
+    txt = GATE_TEXT[lang]
     crop = crop_name.strip() or "the crop the farmer named"
     instruction = (
         f'The farmer says this photo is of: "{crop}". '
+        f'Write the "reason" field in {language}. '
         "Validate the photo now and return ONLY the JSON object."
     )
 
@@ -230,37 +335,28 @@ def validate_image(file_data, file_mime, crop_name):
     if is_plant and is_clear and matches:
         return {"ok": True}
 
-    # Build a friendly, specific rejection message.
+    # Build a friendly, specific rejection message from the localized templates.
     if not is_plant:
-        headline = "That photo does not look like a plant."
-        detail = (
-            "Please upload a clear photo of the affected plant part — for "
-            "example a leaf, stem, root, flower, or fruit."
-        )
+        headline = txt["not_plant_h"]
+        detail = txt["not_plant_d"]
     elif not is_clear:
-        headline = "That photo is not clear enough to analyse."
-        detail = (
-            "Please take another photo that is sharp and well-lit. Get closer "
-            "to the affected area, hold the camera steady, and avoid shadows, "
-            "glare, or blur."
-        )
+        headline = txt["blurry_h"]
+        detail = txt["blurry_d"]
     else:  # not matches
-        seen = f' It looks more like {detected}.' if detected and detected.lower() != "unknown" else ""
-        headline = (
-            f'That photo does not match "{crop}".{seen}'
-        )
-        detail = (
-            f'Please upload a photo of your {crop} plant part (leaf, stem, '
-            "root, flower, or fruit) so the diagnosis stays accurate."
-        )
+        if detected and detected.lower() != "unknown":
+            seen = txt["mismatch_seen"].format(detected=detected)
+        else:
+            seen = ""
+        headline = txt["mismatch_h"].format(crop=crop, seen=seen)
+        detail = txt["mismatch_d"].format(crop=crop)
 
-    message = f"## Photo Not Accepted\n\n**{headline}**\n\n{detail}"
+    message = f'## {txt["photo_title"]}\n\n**{headline}**\n\n{detail}'
     if reason:
         message += f"\n\n*{reason}*"
     return {"ok": False, "message": message}
 
 
-def validate_location(location):
+def validate_location(location, language="English"):
     """Check whether the farm location is a real place on Earth where crops
     can grow.
 
@@ -270,6 +366,8 @@ def validate_location(location):
     Fails open (allows diagnosis) on any unexpected error or blank input so a
     validation hiccup never blocks a legitimate farmer.
     """
+    lang = gate_lang(language)
+    txt = GATE_TEXT[lang]
     loc = (location or "").strip()
     if not loc:
         # Location is required by the form; if empty, let the normal flow run.
@@ -277,6 +375,7 @@ def validate_location(location):
 
     instruction = (
         f'The farmer entered this farm location: "{loc}". '
+        f'Write the "reason" field in {language}. '
         "Judge it now and return ONLY the JSON object."
     )
 
@@ -320,47 +419,27 @@ def validate_location(location):
 
     # A growable place that is only described vaguely ("here", "my village").
     if can_grow and not is_specific:
-        headline = f'"{loc}" is not specific enough.'
-        detail = (
-            "Please enter an actual place instead of a general phrase like "
-            '"here", "there", or "my village". Type your country and region '
-            'or province — for example "Kenya - Rift Valley", '
-            '"India - Punjab", or "Nigeria - Kaduna" — so we can tailor the '
-            "advice to your local conditions."
-        )
-        message = f"## Location Not Accepted\n\n**{headline}**\n\n{detail}"
+        headline = txt["vague_h"].format(loc=loc)
+        detail = txt["vague_d"]
+        message = f'## {txt["loc_title"]}\n\n**{headline}**\n\n{detail}'
         if reason:
             message += f"\n\n*{reason}*"
         return {"ok": False, "message": message}
 
     if kind == "off_earth":
-        headline = f'Plants cannot grow at "{loc}".'
-        detail = (
-            "That location is not on Earth. Crops need soil, air, water, and "
-            "sunlight found only here on Earth. Please enter a real place on "
-            "Earth — your country and region or province."
-        )
+        headline = txt["offearth_h"].format(loc=loc)
+        detail = txt["offearth_d"]
     elif kind == "fictional":
-        headline = f'"{loc}" does not appear to be a real place.'
-        detail = (
-            "We could not recognise that as a real location on Earth. Please "
-            "enter your actual country and region or province so we can tailor "
-            "the advice to your local conditions."
-        )
+        headline = txt["fictional_h"].format(loc=loc)
+        detail = txt["fictional_d"]
     elif kind == "uninhabitable":
-        headline = f'Crops cannot realistically grow at "{loc}".'
-        detail = (
-            "That environment cannot support normal crop growing. Please enter "
-            "the country and region or province where your farm is located."
-        )
+        headline = txt["uninhabitable_h"].format(loc=loc)
+        detail = txt["uninhabitable_d"]
     else:
-        headline = f'Plants cannot grow at "{loc}".'
-        detail = (
-            "Please enter a real place on Earth where your farm is located — "
-            "your country and region or province."
-        )
+        headline = txt["offearth_h"].format(loc=loc)
+        detail = txt["offearth_d"]
 
-    message = f"## Location Not Accepted\n\n**{headline}**\n\n{detail}"
+    message = f'## {txt["loc_title"]}\n\n**{headline}**\n\n{detail}'
     if reason:
         message += f"\n\n*{reason}*"
     return {"ok": False, "message": message}
@@ -399,10 +478,11 @@ def diagnose():
     file_mime = data.get("file_mime")
     crop_name = data.get("crop_name", "")
     location = data.get("location", "")
+    language = (data.get("language") or "English").strip() or "English"
 
     # --- Location gate ----------------------------------------------------
     # Reject places off Earth or where crops cannot grow.
-    loc_verdict = validate_location(location)
+    loc_verdict = validate_location(location, language)
     if not loc_verdict.get("ok"):
         loc_message = loc_verdict["message"]
 
@@ -419,7 +499,7 @@ def diagnose():
     # The photo is optional. If none is provided, proceed straight to a
     # text-only diagnosis. If an image is present, validate it first.
     if file_data and file_mime and file_mime.startswith("image/"):
-        verdict = validate_image(file_data, file_mime, crop_name)
+        verdict = validate_image(file_data, file_mime, crop_name, language)
         if not verdict.get("ok"):
             reject_message = verdict["message"]
 
@@ -435,11 +515,19 @@ def diagnose():
     # --- Passed the gate: stream the full diagnosis -----------------------
     messages = build_messages(data)
 
+    # Respond in the language the farmer chose in the UI.
+    system_prompt = (
+        SYSTEM_PROMPT
+        + f"\n\nIMPORTANT: Write your entire response in {language}. "
+        "Keep the markdown section headings, but translate their text into "
+        f"{language} as well. Use simple, everyday {language}."
+    )
+
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 2048,
         "temperature": 0.4,
-        "system": SYSTEM_PROMPT,
+        "system": system_prompt,
         "messages": messages,
     }
 

@@ -16,17 +16,23 @@
         <span class="logo-leaf" aria-hidden="true">🌿</span>
         <div class="logo-text">
           <h1>AgroShield&nbsp;AI</h1>
-          <p>Crop Disease &amp; Pest Diagnostic Tool</p>
+          <p data-i18n="tagline">Crop Disease &amp; Pest Diagnostic Tool</p>
         </div>
       </div>
-      <span class="header-badge">Your intelligent farming companion</span>
+      <div class="header-right">
+        <span class="header-badge" data-i18n="badge">Your intelligent farming companion</span>
+        <button type="button" id="langToggle" class="lang-toggle" aria-label="Switch language" title="Switch language">
+          <span class="lang-globe" aria-hidden="true">🌐</span>
+          <span id="langToggleLabel">Bahasa Melayu</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="container">
     <section class="intro-card">
-      <h2>Welcome to AgroShield AI 🌱</h2>
-      <p>
+      <h2 data-i18n="welcome_title">Welcome to AgroShield AI 🌱</h2>
+      <p data-i18n="welcome_body">
         This app helps smallholder farmers quickly diagnose crop diseases and
         pest problems, get tailored treatment recommendations, and learn
         preventive farming practices. Fill in the details about your crop and
@@ -38,15 +44,16 @@
     <div class="layout">
       <!-- ============================ INPUT FORM ============================ -->
       <form id="agroForm" class="form-card" autocomplete="off">
-        <h3 class="section-title">Tell us about your crop</h3>
+        <h3 class="section-title" data-i18n="form_title">Tell us about your crop</h3>
 
         <!-- Widget 1: Crop Name and Variety -->
         <div class="field">
-          <label for="crop_name">1. Crop Name and Variety</label>
+          <label for="crop_name" data-i18n="w1_label">1. Crop Name and Variety</label>
           <input
             type="text"
             id="crop_name"
             name="crop_name"
+            data-i18n-ph="w1_ph"
             placeholder="e.g., Maize - hybrid DK8031, Tomato - Roma variety, Rice - IR64. Enter your crop name and variety if known."
             required
           />
@@ -54,7 +61,7 @@
 
         <!-- Widget 2: Crop Age in Weeks -->
         <div class="field">
-          <label for="crop_age">2. Crop Age in Weeks</label>
+          <label for="crop_age" data-i18n="w2_label">2. Crop Age in Weeks</label>
           <div class="slider-row">
             <input
               type="range"
@@ -66,31 +73,32 @@
             />
             <output id="crop_age_out" class="slider-value">50</output>
           </div>
-          <span class="hint">Slide to set how old the crop is (1–52 weeks)</span>
+          <span class="hint" data-i18n="w2_hint">Slide to set how old the crop is (1–52 weeks)</span>
         </div>
 
         <!-- Widget 3: Plant Part Affected -->
         <div class="field">
-          <label for="plant_part">3. Plant Part Affected</label>
+          <label for="plant_part" data-i18n="w3_label">3. Plant Part Affected</label>
           <select id="plant_part" name="plant_part" required>
-            <option value="" disabled selected>Select the affected plant part</option>
-            <option value="leaves">Leaves</option>
-            <option value="stem">Stem</option>
-            <option value="roots">Roots</option>
-            <option value="flowers">Flowers</option>
-            <option value="fruits">Fruits</option>
-            <option value="entire plant">Entire plant</option>
-            <option value="multiple parts">Multiple parts</option>
+            <option value="" disabled selected data-i18n="w3_placeholder">Select the affected plant part</option>
+            <option value="leaves" data-i18n="w3_leaves">Leaves</option>
+            <option value="stem" data-i18n="w3_stem">Stem</option>
+            <option value="roots" data-i18n="w3_roots">Roots</option>
+            <option value="flowers" data-i18n="w3_flowers">Flowers</option>
+            <option value="fruits" data-i18n="w3_fruits">Fruits</option>
+            <option value="entire plant" data-i18n="w3_entire">Entire plant</option>
+            <option value="multiple parts" data-i18n="w3_multiple">Multiple parts</option>
           </select>
         </div>
 
         <!-- Widget 4: Symptom Description -->
         <div class="field">
-          <label for="symptoms">4. Symptom Description</label>
+          <label for="symptoms" data-i18n="w4_label">4. Symptom Description</label>
           <textarea
             id="symptoms"
             name="symptoms"
             rows="4"
+            data-i18n-ph="w4_ph"
             placeholder="Describe what you see in detail — e.g., yellow spots on leaves, brown lesions on stem, wilting despite watering, holes in leaves, white powder on surface, rotting roots, unusual discoloration, etc."
             required
           ></textarea>
@@ -98,7 +106,7 @@
 
         <!-- Widget 5: Field Affected Percentage -->
         <div class="field">
-          <label for="field_percentage">5. Field Affected Percentage</label>
+          <label for="field_percentage" data-i18n="w5_label">5. Field Affected Percentage</label>
           <div class="slider-row">
             <input
               type="range"
@@ -110,56 +118,59 @@
             />
             <output id="field_percentage_out" class="slider-value">50%</output>
           </div>
-          <span class="hint">Estimate how much of the field is affected (1–100%)</span>
+          <span class="hint" data-i18n="w5_hint">Estimate how much of the field is affected (1–100%)</span>
         </div>
 
         <!-- Widget 6: Recent Weather Conditions -->
         <div class="field">
-          <label for="weather">6. Recent Weather Conditions</label>
+          <label for="weather" data-i18n="w6_label">6. Recent Weather Conditions</label>
           <select id="weather" name="weather" required>
-            <option value="" disabled selected>Select recent weather</option>
-            <option value="Hot and Dry">Hot and Dry</option>
-            <option value="Warm and Humid">Warm and Humid</option>
-            <option value="Rainy and Wet">Rainy and Wet</option>
-            <option value="Mild and Cloudy">Mild and Cloudy</option>
-            <option value="Cold">Cold</option>
-            <option value="Mixed or Variable">Mixed or Variable</option>
+            <option value="" disabled selected data-i18n="w6_placeholder">Select recent weather</option>
+            <option value="Hot and Dry" data-i18n="w6_hot">Hot and Dry</option>
+            <option value="Warm and Humid" data-i18n="w6_humid">Warm and Humid</option>
+            <option value="Rainy and Wet" data-i18n="w6_rainy">Rainy and Wet</option>
+            <option value="Mild and Cloudy" data-i18n="w6_mild">Mild and Cloudy</option>
+            <option value="Cold" data-i18n="w6_cold">Cold</option>
+            <option value="Mixed or Variable" data-i18n="w6_mixed">Mixed or Variable</option>
           </select>
         </div>
 
         <!-- Widget 7: Pest or Insect Observations (optional) -->
         <div class="field">
-          <label for="pests">7. Pest or Insect Observations <span class="optional">(optional)</span></label>
+          <label for="pests"><span data-i18n="w7_label">7. Pest or Insect Observations</span> <span class="optional" data-i18n="optional">(optional)</span></label>
           <textarea
             id="pests"
             name="pests"
             rows="3"
+            data-i18n-ph="w7_ph"
             placeholder="Did you notice any insects, worms, flies, or other creatures on or near your crops? Describe their appearance, color, size, and behavior if possible. Leave blank if none observed."
           ></textarea>
         </div>
 
         <!-- Widget 8: Recent Treatments Applied (optional) -->
         <div class="field">
-          <label for="treatments">8. Recent Treatments Applied <span class="optional">(optional)</span></label>
+          <label for="treatments"><span data-i18n="w8_label">8. Recent Treatments Applied</span> <span class="optional" data-i18n="optional">(optional)</span></label>
           <textarea
             id="treatments"
             name="treatments"
             rows="3"
+            data-i18n-ph="w8_ph"
             placeholder="Have you recently applied any fertilizers, pesticides, herbicides, or other treatments? If yes, mention the product name, quantity, and when it was applied. Leave blank if none."
           ></textarea>
         </div>
 
         <!-- Widget 9: Farm Location -->
         <div class="field">
-          <label for="location">9. Farm Location</label>
+          <label for="location" data-i18n="w9_label">9. Farm Location</label>
           <input
             type="text"
             id="location"
             name="location"
+            data-i18n-ph="w9_ph"
             placeholder="e.g., Kenya - Rift Valley region, India - Punjab state, Nigeria - Kaduna. Enter your country and region or province to help tailor advice to your local conditions."
             required
           />
-          <span class="hint">
+          <span class="hint" data-i18n="w9_hint">
             Enter an actual named place (country and region or province). General
             phrases like "here", "there", or "my village" cannot be used.
           </span>
@@ -167,10 +178,10 @@
 
         <!-- Widget 10: Crop Photo Upload -->
         <div class="field">
-          <label for="crop_photo">10. Crop Photo Upload <span class="optional">(optional)</span></label>
-          <p class="hint">
+          <label for="crop_photo"><span data-i18n="w10_label">10. Crop Photo Upload</span> <span class="optional" data-i18n="optional">(optional)</span></label>
+          <p class="hint" data-i18n="w10_hint">
             Optional, but recommended for a more accurate diagnosis. If you
-            upload a photo, it <strong>must be the same crop you named above</strong>
+            upload a photo, it must be the same crop you named above
             — for example, if your crop is Maize, upload a photo of a maize leaf,
             stem, root, or fruit, not a different plant. Make sure the image is
             sharp and well-lit and shows the symptoms clearly. If the photo is
@@ -187,14 +198,14 @@
             />
             <div class="dropzone-inner" id="dropzoneInner">
               <span class="dropzone-icon" aria-hidden="true">📷</span>
-              <p><strong>Drag &amp; drop</strong> your crop photo here</p>
-              <p class="dropzone-sub">or click to browse (JPG, PNG, WEBP)</p>
+              <p data-i18n="dz_main"><strong>Drag &amp; drop</strong> your crop photo here</p>
+              <p class="dropzone-sub" data-i18n="dz_sub">or click to browse (JPG, PNG, WEBP)</p>
             </div>
             <div class="dropzone-preview" id="dropzonePreview" hidden>
               <img id="previewImg" alt="Selected crop photo preview" />
               <div class="preview-meta">
                 <span id="previewName"></span>
-                <button type="button" id="removePhoto" class="remove-btn">Remove</button>
+                <button type="button" id="removePhoto" class="remove-btn" data-i18n="remove">Remove</button>
               </div>
             </div>
           </div>
@@ -202,21 +213,21 @@
 
         <button type="button" id="runAll" class="run-btn">
           <span class="run-icon" aria-hidden="true">🔍</span>
-          Run Diagnosis
+          <span data-i18n="run_btn">Run Diagnosis</span>
         </button>
       </form>
 
       <!-- ============================ OUTPUT PANEL ============================ -->
       <section class="output-card">
         <h3 class="section-title">
-          <span aria-hidden="true">🩺</span> AgroShield Diagnosis and Recommendations
+          <span aria-hidden="true">🩺</span> <span data-i18n="output_title">AgroShield Diagnosis and Recommendations</span>
         </h3>
 
         <div class="panel" id="diagnosisPanel">
           <div class="panel-status" id="panelStatus">
             <div class="empty-state">
               <span class="empty-icon" aria-hidden="true">🌾</span>
-              <p>Fill in the form and press <strong>Run Diagnosis</strong>. Your
+              <p data-i18n="empty_state">Fill in the form and press Run Diagnosis. Your
               personalised diagnosis and treatment plan will stream in here.</p>
             </div>
           </div>
@@ -229,15 +240,15 @@
   <footer class="app-footer">
     <div class="footer-inner">
       <div class="team">
-        <h4>Meet the AgroShield Agronomy Team 🌍</h4>
+        <h4 data-i18n="team_title">Meet the AgroShield Agronomy Team 🌍</h4>
         <ul class="team-list">
-          <li><span class="team-emoji">👩🏽‍🌾</span> Amara Okafor — Lead Agronomist</li>
-          <li><span class="team-emoji">👨🏾‍🔬</span> Daniel Mwangi — Plant Pathologist</li>
-          <li><span class="team-emoji">👩🏻‍🔬</span> Priya Sharma — Soil &amp; Crop Scientist</li>
-          <li><span class="team-emoji">👨🏽‍🌾</span> Carlos Mendes — Pest Management Specialist</li>
+          <li><span class="team-emoji">👩🏽‍🌾</span> <span data-i18n="team_1">Amara Okafor — Lead Agronomist</span></li>
+          <li><span class="team-emoji">👨🏾‍🔬</span> <span data-i18n="team_2">Daniel Mwangi — Plant Pathologist</span></li>
+          <li><span class="team-emoji">👩🏻‍🔬</span> <span data-i18n="team_3">Priya Sharma — Soil &amp; Crop Scientist</span></li>
+          <li><span class="team-emoji">👨🏽‍🌾</span> <span data-i18n="team_4">Carlos Mendes — Pest Management Specialist</span></li>
         </ul>
       </div>
-      <p class="disclaimer">
+      <p class="disclaimer" data-i18n="disclaimer">
         AgroShield AI provides guidance to support your decisions. Always confirm
         treatments with a local agricultural extension officer before applying
         chemicals. 🌱

@@ -67,6 +67,12 @@ h1, h2, h3, h4 { font-family: "Poppins", "Nunito", sans-serif; margin: 0; }
 }
 .logo-text h1 { font-size: 26px; letter-spacing: 0.5px; }
 .logo-text p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .header-badge {
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -76,6 +82,25 @@ h1, h2, h3, h4 { font-family: "Poppins", "Nunito", sans-serif; margin: 0; }
   font-weight: 700;
   backdrop-filter: blur(4px);
 }
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  color: var(--green-800);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transition: transform 0.12s, box-shadow 0.2s, background 0.2s;
+}
+.lang-toggle:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22); }
+.lang-toggle:active { transform: translateY(0); }
+.lang-globe { font-size: 16px; }
 
 /* -------------------------------- Container ------------------------------- */
 .container {
