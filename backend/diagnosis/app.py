@@ -559,6 +559,95 @@ def diagnose():
     )
 
 
+# ---------------------------------------------------------------------------
+# Translation endpoint: converts already-generated text between English and
+# Bahasa Melayu without re-running a diagnosis. Streams the result back in the
+# same token-by-token style the frontend already renders.
+# ---------------------------------------------------------------------------
+TRANSLATE_SYSTEM_PROMPT = (
+    "You are a professional translator for a farming app. Translate the text "
+    "the user sends into the requested target language. Rules:\n"
+    "- Preserve the meaning exactly; do not add, remove, or explain anything.\n"
+    "- Keep all markdown formatting intact: headings (#, ##, ###), bold "
+    "(**text**), italics, bullet points, numbered lists, and line breaks.\n"
+    "- Translate the text of headings too, but keep the heading markers.\n"
+    "- Keep product names, chemical names, numbers, and units as-is.\n"
+    "- Use simple, everyday language a smallholder farmer can understand.\n"
+    "- Output ONLY the translated text, with no preamble or quotes."
+)
+
+
+@app.route("/translate", methods=["OPTIONS"])
+def translate_options():
+    return Response(status=200, headers=CORS_HEADERS)
+
+
+@app.route("/translate", methods=["POST"])
+def translate():
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    target = (data.get("target") or "English").strip() or "English"
+
+    if not text:
+        def empty():
+            yield ""
+
+        return Response(
+            stream_with_context(empty()),
+            content_type="text/plain; charset=utf-8",
+            headers=CORS_HEADERS,
+        )
+
+    body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 2048,
+        "temperature": 0,
+        "system": TRANSLATE_SYSTEM_PROMPT,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Translate the following text into {target}. "
+                            "Return only the translation.\n\n"
+                            f"{text}"
+                        ),
+                    }
+                ],
+            }
+        ],
+    }
+
+    def generate():
+        try:
+            response = bedrock.invoke_model_with_response_stream(
+                modelId=MODEL_ID,
+                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json",
+            )
+            for event in response["body"]:
+                chunk = event.get("chunk")
+                if not chunk:
+                    continue
+                payload = json.loads(chunk["bytes"].decode("utf-8"))
+                if payload.get("type") == "content_block_delta":
+                    delta = payload.get("delta", {})
+                    piece = delta.get("text")
+                    if piece:
+                        yield piece
+        except Exception as exc:  # noqa: BLE001 - surface any error to the client
+            yield f"\n\n[Error translating: {exc}]"
+
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/plain; charset=utf-8",
+        headers=CORS_HEADERS,
+    )
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)

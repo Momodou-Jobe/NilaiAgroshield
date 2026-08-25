@@ -80,6 +80,7 @@ const I18N = {
       "AgroShield AI provides guidance to support your decisions. Always confirm treatments with a local agricultural extension officer before applying chemicals. 🌱",
     // runtime strings
     spinner: "Analysing your crop… growing your diagnosis 🌱",
+    translating: "Translating… 🌐",
     err_generic: "Sorry, something went wrong.",
     err_no_url:
       "The diagnosis service URL has not been configured yet. Deploy via GitHub Actions so the Function URL is injected.",
@@ -152,6 +153,7 @@ const I18N = {
     disclaimer:
       "AgroShield AI memberikan panduan untuk menyokong keputusan anda. Sentiasa sahkan rawatan dengan pegawai pengembangan pertanian tempatan sebelum menggunakan bahan kimia. 🌱",
     spinner: "Menganalisis tanaman anda… menyediakan diagnosis 🌱",
+    translating: "Menterjemah… 🌐",
     err_generic: "Maaf, sesuatu telah berlaku.",
     err_no_url:
       "URL perkhidmatan diagnosis belum dikonfigurasikan. Sebarkan melalui GitHub Actions supaya Function URL dimasukkan.",
@@ -422,6 +424,21 @@ function validate() {
   return true;
 }
 
+// Raw markdown of the last diagnosis (or gate message) shown on screen, and
+// the language it is currently displayed in. Used to re-translate on toggle.
+let lastOutputText = "";
+let lastOutputLang = currentLang;
+
+// Render a full markdown string into the output panel, line by line.
+function renderMarkdownToOutput(text) {
+  beginOutput();
+  const lines = String(text).split("\n");
+  for (const line of lines) {
+    output.appendChild(makeLineSpan(line));
+  }
+  output.scrollTop = 0;
+}
+
 // --------------------------------------------------------------------------
 // Streaming: fetch + response.body.getReader(), buffer incomplete lines,
 // flush complete lines as animated markdown spans, blinking cursor on active.
@@ -453,6 +470,7 @@ async function runDiagnosis() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
+    let accumulated = ""; // full raw markdown, for later re-translation
     let activeLine = null; // span currently receiving tokens (blinking cursor)
 
     function ensureActiveLine() {
@@ -468,7 +486,9 @@ async function runDiagnosis() {
       const { value, done } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      const decoded = decoder.decode(value, { stream: true });
+      buffer += decoded;
+      accumulated += decoded;
 
       let newlineIndex;
       while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
@@ -500,6 +520,10 @@ async function runDiagnosis() {
       output.appendChild(makeLineSpan(t("no_diagnosis")));
     }
     output.scrollTop = output.scrollHeight;
+
+    // Remember the result so the language toggle can translate it in place.
+    lastOutputText = accumulated;
+    lastOutputLang = currentLang;
   } catch (err) {
     showError(err && err.message ? err.message : String(err));
   } finally {
@@ -511,11 +535,123 @@ async function runDiagnosis() {
 runBtn.addEventListener("click", runDiagnosis);
 
 // --------------------------------------------------------------------------
+// Translation helper: POST text to the /translate endpoint and return the full
+// translated string (reads the streamed response to completion).
+// --------------------------------------------------------------------------
+const TRANSLATE_URL =
+  DIAGNOSIS_URL && DIAGNOSIS_URL.indexOf("__") !== 0
+    ? DIAGNOSIS_URL.replace(/\/+$/, "") + "/translate"
+    : "";
+
+async function translateText(text, targetLabel) {
+  if (!text || !TRANSLATE_URL) return text;
+  const response = await fetch(TRANSLATE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text, target: targetLabel }),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error("HTTP " + response.status);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let out = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    out += decoder.decode(value, { stream: true });
+  }
+  return out.trim();
+}
+
+// The free-text input fields whose typed content we also translate.
+const TEXT_INPUT_IDS = [
+  "crop_name",
+  "symptoms",
+  "pests",
+  "treatments",
+  "location",
+];
+
+async function translateInputs(targetLabel) {
+  const jobs = [];
+  for (const id of TEXT_INPUT_IDS) {
+    const el = document.getElementById(id);
+    const value = el.value.trim();
+    if (value) {
+      jobs.push(
+        translateText(value, targetLabel)
+          .then((translated) => {
+            if (translated) el.value = translated;
+          })
+          .catch(() => {
+            /* leave the original text if translation fails */
+          })
+      );
+    }
+  }
+  await Promise.all(jobs);
+}
+
+// --------------------------------------------------------------------------
 // Language toggle (English <-> Bahasa Melayu)
+//   1. switches all static UI text
+//   2. translates the typed inputs into the new language
+//   3. translates the diagnosis already on screen into the new language
 // --------------------------------------------------------------------------
 const langToggle = document.getElementById("langToggle");
-langToggle.addEventListener("click", () => {
-  applyLanguage(currentLang === "en" ? "ms" : "en");
+let switching = false;
+
+langToggle.addEventListener("click", async () => {
+  if (switching) return;
+  const newLang = currentLang === "en" ? "ms" : "en";
+  const targetLabel = newLang === "ms" ? "Bahasa Melayu" : "English";
+
+  // Always switch the static UI immediately.
+  applyLanguage(newLang);
+
+  const hasOutput = lastOutputText && lastOutputText.trim().length > 0;
+  const hasInputs = TEXT_INPUT_IDS.some(
+    (id) => document.getElementById(id).value.trim().length > 0
+  );
+
+  // Nothing typed or generated yet -> just the UI switch.
+  if ((!hasOutput && !hasInputs) || !TRANSLATE_URL) return;
+
+  switching = true;
+  langToggle.disabled = true;
+
+  // Show a translating state over any existing output.
+  if (hasOutput) {
+    output.classList.remove("active");
+    panelStatus.innerHTML =
+      '<div class="spinner-wrap"><div class="spinner"></div>' +
+      "<span>" +
+      escapeHtml(t("translating")) +
+      "</span></div>";
+  }
+
+  try {
+    // Translate inputs and output in parallel.
+    const tasks = [translateInputs(targetLabel)];
+    if (hasOutput) {
+      tasks.push(
+        translateText(lastOutputText, targetLabel).then((translated) => {
+          if (translated) {
+            lastOutputText = translated;
+            lastOutputLang = newLang;
+            renderMarkdownToOutput(translated);
+          }
+        })
+      );
+    }
+    await Promise.all(tasks);
+  } catch (err) {
+    if (hasOutput) showError(err && err.message ? err.message : String(err));
+  } finally {
+    switching = false;
+    langToggle.disabled = false;
+  }
 });
 
 // Apply the saved/default language on first load.
