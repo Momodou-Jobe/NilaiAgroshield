@@ -22,6 +22,9 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # Required for lab sandboxes (ISB / AWS Academy). Harmless if the
+          # AWS_SESSION_TOKEN secret is empty on a personal account.
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Python
@@ -45,7 +48,8 @@ jobs:
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
             --region "$AWS_REGION" \
             --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "LabRoleArn=${{ secrets.LAB_ROLE_ARN }}"
 
       - name: Read stack outputs
         id: outputs

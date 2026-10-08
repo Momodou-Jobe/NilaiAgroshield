@@ -4,6 +4,19 @@ Description: >
   AgroShield AI - Crop Disease Diagnostic Tool.
   Streaming Flask Lambda (Bedrock Claude Haiku 4.5) + S3 static website.
 
+Parameters:
+  LabRoleArn:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. In a restricted AWS lab sandbox (ISB, AWS Academy, etc.) IAM
+      role creation is usually blocked. Pass the pre-existing LabRole ARN here
+      and the template will attach it to the Lambda instead of creating its own
+      role. Leave blank in a personal account to create AppBedrockRole normally.
+
+Conditions:
+  CreateRole: !Equals [!Ref LabRoleArn, ""]
+
 Globals:
   Function:
     Timeout: 60
@@ -13,10 +26,12 @@ Globals:
 Resources:
 
   # ---------------------------------------------------------------------------
-  # IAM role shared by the Bedrock-invoking Lambda(s)
+  # IAM role shared by the Bedrock-invoking Lambda(s).
+  # Only created when no LabRoleArn is supplied (i.e. a personal account).
   # ---------------------------------------------------------------------------
   AppBedrockRole:
     Type: AWS::IAM::Role
+    Condition: CreateRole
     Properties:
       RoleName: agroshield-app-bedrock-role
       AssumeRolePolicyDocument:
@@ -53,7 +68,7 @@ Resources:
       FunctionName: agroshield-diagnosis
       CodeUri: ../backend/diagnosis/
       Handler: run.sh
-      Role: !GetAtt AppBedrockRole.Arn
+      Role: !If [CreateRole, !GetAtt AppBedrockRole.Arn, !Ref LabRoleArn]
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:27"
       Environment:
